@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tide of Ashes - 3D Board</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        .board-container {
+            perspective: 1200px;
+            transform-style: preserve-3d;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .board-container:active {
+            cursor: grabbing;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(30, 20px);
+            grid-template-rows: repeat(30, 20px);
+            gap: 1px;
+            transform: rotateX(60deg) rotateY(-30deg);
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+
+        .tile {
+            width: 20px;
+            height: 20px;
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: pointer;
+            transition: all 0.8s ease;
+        }
+
+        .tile-face {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: none;
+        }
+
+        /* Base city tiles */
+        .tile-top {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            transform: translateZ(20px);
+            box-shadow:
+                inset 0 0 6px rgba(255,255,255,0.4),
+                0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tile-front {
+            background: linear-gradient(180deg, #7f8c8d 0%, #5d6d7e 100%);
+            transform: rotateX(-90deg) translateZ(0px);
+            transform-origin: bottom;
+            height: 20px;
+        }
+
+        .tile-right {
+            background: linear-gradient(180deg, #6c7b7f 0%, #515a5a 100%);
+            transform: rotateY(90deg) translateZ(20px);
+            transform-origin: right;
+            height: 20px;
+        }
+
+        .tile-left {
+            background: linear-gradient(180deg, #6c7b7f 0%, #515a5a 100%);
+            transform: rotateY(-90deg) translateZ(0px);
+            transform-origin: left;
+            height: 20px;
+        }
+
+        .tile-back {
+            background: linear-gradient(180deg, #7f8c8d 0%, #5d6d7e 100%);
+            transform: rotateX(90deg) translateZ(20px);
+            transform-origin: top;
+            height: 20px;
+        }
+
+        .tile-bottom {
+            background: linear-gradient(135deg, #5d6d7e 0%, #34495e 100%);
+            transform: translateZ(0px);
+        }
+
+        /* Building types with windows and details */
+        .building-low .tile-top {
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 1px, transparent 1px),
+                radial-gradient(circle at 70% 30%, rgba(255,255,255,0.3) 1px, transparent 1px),
+                radial-gradient(circle at 30% 70%, rgba(255,255,255,0.3) 1px, transparent 1px),
+                radial-gradient(circle at 70% 70%, rgba(255,255,255,0.3) 1px, transparent 1px),
+                linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            transform: translateZ(25px);
+            box-shadow:
+                inset 0 0 6px rgba(255,255,255,0.3),
+                0 3px 6px rgba(243, 156, 18, 0.4);
+        }
+
+        .building-low .tile-front,
+        .building-low .tile-back {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 3px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 5px),
+                linear-gradient(180deg, #e67e22 0%, #d35400 100%);
+            height: 25px;
+        }
+
+        .building-low .tile-right,
+        .building-low .tile-left {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 3px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 5px),
+                linear-gradient(180deg, #dc7633 0%, #ca6f1e 100%);
+            height: 25px;
+        }
+
+        .building-medium .tile-top {
+            background:
+                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.4) 1px, transparent 1px),
+                radial-gradient(circle at 50% 25%, rgba(255,255,255,0.4) 1px, transparent 1px),
+                radial-gradient(circle at 75% 25%, rgba(255,255,255,0.4) 1px, transparent 1px),
+                radial-gradient(circle at 25% 75%, rgba(255,255,255,0.4) 1px, transparent 1px),
+                radial-gradient(circle at 50% 75%, rgba(255,255,255,0.4) 1px, transparent 1px),
+                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.4) 1px, transparent 1px),
+                linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            transform: translateZ(35px);
+            box-shadow:
+                inset 0 0 8px rgba(255,255,255,0.4),
+                0 4px 8px rgba(39, 174, 96, 0.5);
+        }
+
+        .building-medium .tile-front,
+        .building-medium .tile-back {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px),
+                linear-gradient(180deg, #229954 0%, #1e8449 100%);
+            height: 35px;
+        }
+
+        .building-medium .tile-right,
+        .building-medium .tile-left {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px),
+                linear-gradient(180deg, #196f3d 0%, #145a32 100%);
+            height: 35px;
+        }
+
+        .building-tall .tile-top {
+            background:
+                radial-gradient(circle at 20% 20%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                radial-gradient(circle at 40% 20%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                radial-gradient(circle at 60% 20%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                radial-gradient(circle at 20% 80%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                radial-gradient(circle at 40% 80%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                radial-gradient(circle at 60% 80%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                radial-gradient(circle at 80% 80%, rgba(255,255,255,0.5) 1px, transparent 1px),
+                linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            transform: translateZ(50px);
+            box-shadow:
+                inset 0 0 10px rgba(255,255,255,0.4),
+                0 6px 12px rgba(231, 76, 60, 0.6);
+        }
+
+        .building-tall .tile-front,
+        .building-tall .tile-back {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px),
+                linear-gradient(180deg, #c0392b 0%, #a93226 100%);
+            height: 50px;
+        }
+
+        .building-tall .tile-right,
+        .building-tall .tile-left {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px),
+                linear-gradient(180deg, #b03a2e 0%, #922b21 100%);
+            height: 50px;
+        }
+
+        /* Special buildings with glowing effect */
+        .building-special .tile-top {
+            background:
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.8) 2px, transparent 2px),
+                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.6) 1px, transparent 1px),
+                radial-gradient(circle at 75% 25%, rgba(255,255,255,0.6) 1px, transparent 1px),
+                radial-gradient(circle at 25% 75%, rgba(255,255,255,0.6) 1px, transparent 1px),
+                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.6) 1px, transparent 1px),
+                linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            transform: translateZ(60px);
+            box-shadow:
+                inset 0 0 12px rgba(255,255,255,0.6),
+                0 8px 16px rgba(155, 89, 182, 0.8),
+                0 0 20px rgba(155, 89, 182, 0.4);
+            animation: buildingGlow 4s ease-in-out infinite alternate;
+        }
+
+        .building-special .tile-front,
+        .building-special .tile-back {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 1px, rgba(255,255,255,0.2) 1px, rgba(255,255,255,0.2) 2px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 3px),
+                linear-gradient(180deg, #8e44ad 0%, #7d3c98 100%);
+            height: 60px;
+        }
+
+        .building-special .tile-right,
+        .building-special .tile-left {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 1px, rgba(255,255,255,0.2) 1px, rgba(255,255,255,0.2) 2px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 3px),
+                linear-gradient(180deg, #85929e 0%, #6c7b7f 100%);
+            height: 60px;
+        }
+
+        @keyframes buildingGlow {
+            0% {
+                box-shadow:
+                    inset 0 0 12px rgba(255,255,255,0.6),
+                    0 8px 16px rgba(155, 89, 182, 0.8),
+                    0 0 20px rgba(155, 89, 182, 0.4);
+            }
+            100% {
+                box-shadow:
+                    inset 0 0 20px rgba(255,255,255,0.8),
+                    0 12px 24px rgba(155, 89, 182, 1.0),
+                    0 0 30px rgba(155, 89, 182, 0.6);
+            }
+        }
+
+        /* Enhanced Roads with lane markings */
+        .road .tile-top {
+            background:
+                linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.8) 48%, rgba(255,255,255,0.8) 52%, transparent 60%),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 8px, rgba(255,255,255,0.4) 8px, rgba(255,255,255,0.4) 10px),
+                linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            transform: translateZ(5px);
+            box-shadow:
+                inset 0 0 6px rgba(0,0,0,0.4),
+                0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .road .tile-front,
+        .road .tile-back {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(0,0,0,0.2) 3px, rgba(0,0,0,0.2) 4px),
+                linear-gradient(180deg, #2c3e50 0%, #1b2631 100%);
+            height: 5px;
+        }
+
+        .road .tile-right,
+        .road .tile-left {
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(0,0,0,0.2) 3px, rgba(0,0,0,0.2) 4px),
+                linear-gradient(180deg, #283747 0%, #212f3c 100%);
+            height: 5px;
+        }
+
+        /* Enhanced base land with texture */
+        .tile-top {
+            background:
+                radial-gradient(circle at 10% 10%, rgba(255,255,255,0.1) 1px, transparent 1px),
+                radial-gradient(circle at 90% 90%, rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+
+        /* Parks and green spaces */
+        .park .tile-top {
+            background:
+                radial-gradient(circle at 30% 30%, rgba(46, 125, 50, 0.6) 3px, transparent 3px),
+                radial-gradient(circle at 70% 70%, rgba(46, 125, 50, 0.6) 2px, transparent 2px),
+                radial-gradient(circle at 50% 80%, rgba(46, 125, 50, 0.6) 4px, transparent 4px),
+                linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+            transform: translateZ(15px);
+            box-shadow:
+                inset 0 0 6px rgba(255,255,255,0.3),
+                0 2px 4px rgba(76, 175, 80, 0.4);
+        }
+
+        .park .tile-front,
+        .park .tile-back {
+            background: linear-gradient(180deg, #388e3c 0%, #2e7d32 100%);
+            height: 15px;
+        }
+
+        .park .tile-right,
+        .park .tile-left {
+            background: linear-gradient(180deg, #43a047 0%, #2e7d32 100%);
+            height: 15px;
+        }
+
+        /* Water tiles */
+        .water-tile .tile-top {
+            background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+            box-shadow:
+                inset 0 0 12px rgba(255,255,255,0.6),
+                0 2px 8px rgba(52, 152, 219, 0.4);
+            animation: waterShimmer 3s ease-in-out infinite alternate;
+        }
+
+        .water-tile .tile-front {
+            background: linear-gradient(180deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .water-tile .tile-right {
+            background: linear-gradient(180deg, #2e86c1 0%, #2471a3 100%);
+        }
+
+        .water-tile .tile-left {
+            background: linear-gradient(180deg, #2e86c1 0%, #2471a3 100%);
+        }
+
+        .water-tile .tile-back {
+            background: linear-gradient(180deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .water-tile .tile-bottom {
+            background: linear-gradient(135deg, #2980b9 0%, #1f618d 100%);
+        }
+
+        @keyframes waterShimmer {
+            0% {
+                box-shadow:
+                    inset 0 0 12px rgba(255,255,255,0.6),
+                    0 2px 8px rgba(52, 152, 219, 0.4);
+            }
+            100% {
+                box-shadow:
+                    inset 0 0 20px rgba(255,255,255,0.8),
+                    0 4px 12px rgba(174, 214, 241, 0.6);
+            }
+        }
+
+        /* Drowning animation */
+        .drowning {
+            animation: drown 1s ease-in-out forwards;
+        }
+
+        @keyframes drown {
+            0% {
+                transform: translateZ(0px);
+            }
+            100% {
+                transform: translateZ(-10px);
+            }
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls h3 {
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+
+        .controls button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px 0;
+            display: block;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+
+        .controls button:hover {
+            background: #2980b9;
+        }
+
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+        }
+
+        .status h3 {
+            margin-bottom: 10px;
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>🌊 Tide Controls</h3>
+        <button onclick="startWaterSpread()">Start Water Spread</button>
+        <button onclick="pauseWaterSpread()">Pause</button>
+        <button onclick="resetBoard()">Reset Board</button>
+        <button onclick="speedUp()">Speed Up</button>
+        <button onclick="slowDown()">Slow Down</button>
+    </div>
+
+    <div class="status">
+        <h3>🏝️ City Status</h3>
+        <div>Land Tiles: <span id="landCount">225</span></div>
+        <div>Water Tiles: <span id="waterCount">0</span></div>
+        <div>Speed: <span id="speed">1000ms</span></div>
+    </div>
+
+    <div class="board-container">
+        <div class="grid" id="gameGrid">
+            <!-- Grid generated by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        class TideOfAshes {
+            constructor() {
+                this.gridSize = 30;
+                this.grid = [];
+                this.waterTiles = new Set();
+                this.isRunning = false;
+                this.speed = 1000;
+                this.intervalId = null;
+
+                // Rotation controls
+                this.rotationX = 60;
+                this.rotationY = -30;
+                this.isDragging = false;
+                this.lastMouseX = 0;
+                this.lastMouseY = 0;
+
+                this.initializeGrid();
+                this.createBoard();
+                this.setupMouseControls();
+                this.updateStatus();
+            }
+
+            initializeGrid() {
+                for (let row = 0; row < this.gridSize; row++) {
+                    this.grid[row] = [];
+                    for (let col = 0; col < this.gridSize; col++) {
+                        this.grid[row][col] = this.generateCityTile(row, col);
+                    }
+                }
+            }
+
+            generateCityTile(row, col) {
+                const center = this.gridSize / 2;
+                const distanceFromCenter = Math.sqrt((row - center) ** 2 + (col - center) ** 2);
+
+                // Create main roads (grid pattern)
+                if (row % 6 === 0 || col % 6 === 0) {
+                    return 'road';
+                }
+
+                // Add some parks randomly in outer areas
+                if (distanceFromCenter > 12 && Math.random() < 0.15) {
+                    return 'park';
+                }
+
+                // Special buildings in city center
+                if (distanceFromCenter < 3) {
+                    return 'building-special';
+                }
+
+                // Different building heights based on distance from center with some randomness
+                if (distanceFromCenter < 6) {
+                    return Math.random() < 0.8 ? 'building-tall' : 'building-medium';
+                } else if (distanceFromCenter < 10) {
+                    return Math.random() < 0.7 ? 'building-medium' : 'building-low';
+                } else if (distanceFromCenter < 14) {
+                    return Math.random() < 0.6 ? 'building-low' : 'land';
+                } else {
+                    return Math.random() < 0.3 ? 'building-low' : 'land';
+                }
+            }
+
+            createBoard() {
+                const gridElement = document.getElementById('gameGrid');
+                gridElement.innerHTML = '';
+
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        const tile = document.createElement('div');
+                        const tileType = this.grid[row][col];
+                        tile.className = `tile ${tileType}`;
+                        tile.dataset.row = row;
+                        tile.dataset.col = col;
+
+                        // Create all 6 faces of the cube
+                        const faces = ['top', 'front', 'right', 'left', 'back', 'bottom'];
+                        faces.forEach(face => {
+                            const faceElement = document.createElement('div');
+                            faceElement.className = `tile-face tile-${face}`;
+                            tile.appendChild(faceElement);
+                        });
+
+                        gridElement.appendChild(tile);
+                    }
+                }
+            }
+
+            getCornerTiles() {
+                const corners = [
+                    {row: 0, col: 0},                                    // Top-left
+                    {row: 0, col: this.gridSize - 1},                   // Top-right
+                    {row: this.gridSize - 1, col: 0},                   // Bottom-left
+                    {row: this.gridSize - 1, col: this.gridSize - 1}    // Bottom-right
+                ];
+
+                // Filter out corners that are already water
+                return corners.filter(corner =>
+                    !this.grid[corner.row][corner.col].includes('water')
+                );
+            }
+
+            getEdgeTiles() {
+                const edges = [];
+
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        // Check if tile is on the edge and is not water
+                        if ((row === 0 || row === this.gridSize - 1 ||
+                             col === 0 || col === this.gridSize - 1) &&
+                            !this.grid[row][col].includes('water')) {
+                            edges.push({row, col});
+                        }
+                    }
+                }
+
+                return edges;
+            }
+
+            getAdjacentLandTiles() {
+                const adjacent = [];
+
+                for (let waterKey of this.waterTiles) {
+                    const [row, col] = waterKey.split(',').map(Number);
+
+                    // Check all 4 directions
+                    const directions = [
+                        {row: row - 1, col},
+                        {row: row + 1, col},
+                        {row, col: col - 1},
+                        {row, col: col + 1}
+                    ];
+
+                    directions.forEach(({row: newRow, col: newCol}) => {
+                        if (newRow >= 0 && newRow < this.gridSize &&
+                            newCol >= 0 && newCol < this.gridSize &&
+                            !this.grid[newRow][newCol].includes('water')) {
+                            adjacent.push({row: newRow, col: newCol});
+                        }
+                    });
+                }
+
+                return adjacent;
+            }
+
+            spreadWater() {
+                let candidates = [];
+
+                if (this.waterTiles.size === 0) {
+                    // Start from ALL four corners at once
+                    const corners = this.getCornerTiles();
+                    if (corners.length === 0) {
+                        alert('🌊 All corners are already flooded!');
+                        return;
+                    }
+
+                    // Flood all available corners simultaneously
+                    corners.forEach(corner => {
+                        this.convertToWater(corner.row, corner.col);
+                    });
+                    this.updateStatus();
+                    return;
+                } else {
+                    // Spread to adjacent land tiles from all existing water
+                    candidates = this.getAdjacentLandTiles();
+                }
+
+                if (candidates.length === 0) {
+                    this.stopWaterSpread();
+                    alert('🌊 The tide has consumed everything! Game Over!');
+                    return;
+                }
+
+                // Pick a random candidate from adjacent tiles
+                const randomIndex = Math.floor(Math.random() * candidates.length);
+                const {row, col} = candidates[randomIndex];
+
+                this.convertToWater(row, col);
+                this.updateStatus();
+            }
+
+            convertToWater(row, col) {
+                this.grid[row][col] = 'water';
+                this.waterTiles.add(`${row},${col}`);
+
+                const tile = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                tile.classList.add('drowning');
+
+                setTimeout(() => {
+                    tile.classList.remove('drowning');
+                    tile.classList.add('water-tile');
+                }, 1000);
+            }
+
+            startWaterSpread() {
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.intervalId = setInterval(() => {
+                        this.spreadWater();
+                    }, this.speed);
+                }
+            }
+
+            pauseWaterSpread() {
+                this.isRunning = false;
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+            }
+
+            stopWaterSpread() {
+                this.pauseWaterSpread();
+            }
+
+            resetBoard() {
+                this.stopWaterSpread();
+                this.waterTiles.clear();
+                this.initializeGrid();
+                this.createBoard();
+                this.updateStatus();
+            }
+
+            speedUp() {
+                this.speed = Math.max(100, this.speed - 200);
+                if (this.isRunning) {
+                    this.pauseWaterSpread();
+                    this.startWaterSpread();
+                }
+                this.updateStatus();
+            }
+
+            slowDown() {
+                this.speed += 200;
+                if (this.isRunning) {
+                    this.pauseWaterSpread();
+                    this.startWaterSpread();
+                }
+                this.updateStatus();
+            }
+
+            setupMouseControls() {
+                const boardContainer = document.querySelector('.board-container');
+                const grid = document.getElementById('gameGrid');
+
+                boardContainer.addEventListener('mousedown', (e) => {
+                    this.isDragging = true;
+                    this.lastMouseX = e.clientX;
+                    this.lastMouseY = e.clientY;
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (this.isDragging) {
+                        const deltaX = e.clientX - this.lastMouseX;
+                        const deltaY = e.clientY - this.lastMouseY;
+
+                        this.rotationY += deltaX * 0.5;
+                        this.rotationX -= deltaY * 0.5;
+
+                        // Clamp rotationX to prevent flipping
+                        this.rotationX = Math.max(10, Math.min(80, this.rotationX));
+
+                        grid.style.transform = `rotateX(${this.rotationX}deg) rotateY(${this.rotationY}deg)`;
+
+                        this.lastMouseX = e.clientX;
+                        this.lastMouseY = e.clientY;
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                });
+
+                // Touch controls for mobile
+                boardContainer.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        this.isDragging = true;
+                        this.lastMouseX = e.touches[0].clientX;
+                        this.lastMouseY = e.touches[0].clientY;
+                        e.preventDefault();
+                    }
+                });
+
+                document.addEventListener('touchmove', (e) => {
+                    if (this.isDragging && e.touches.length === 1) {
+                        const deltaX = e.touches[0].clientX - this.lastMouseX;
+                        const deltaY = e.touches[0].clientY - this.lastMouseY;
+
+                        this.rotationY += deltaX * 0.5;
+                        this.rotationX -= deltaY * 0.5;
+
+                        this.rotationX = Math.max(10, Math.min(80, this.rotationX));
+
+                        grid.style.transform = `rotateX(${this.rotationX}deg) rotateY(${this.rotationY}deg)`;
+
+                        this.lastMouseX = e.touches[0].clientX;
+                        this.lastMouseY = e.touches[0].clientY;
+                    }
+                });
+
+                document.addEventListener('touchend', () => {
+                    this.isDragging = false;
+                });
+            }
+
+            updateStatus() {
+                const landCount = this.gridSize * this.gridSize - this.waterTiles.size;
+                document.getElementById('landCount').textContent = landCount;
+                document.getElementById('waterCount').textContent = this.waterTiles.size;
+                document.getElementById('speed').textContent = `${this.speed}ms`;
+            }
+        }
+
+        // Initialize game
+        const game = new TideOfAshes();
+
+        // Global functions for buttons
+        function startWaterSpread() { game.startWaterSpread(); }
+        function pauseWaterSpread() { game.pauseWaterSpread(); }
+        function resetBoard() { game.resetBoard(); }
+        function speedUp() { game.speedUp(); }
+        function slowDown() { game.slowDown(); }
+    </script>
+</body>
+</html>
